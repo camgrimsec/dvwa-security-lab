@@ -9,77 +9,186 @@ on:
     # Run daily at 08:00 UTC
     - cron: '0 8 * * *'
 
+# ── Reusable defaults ──────────────────────────────────────────────────────────
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  snyk-dependency-scan:
-    name: Snyk - Dependency Vulnerabilities
+  # ── DVWA Web App ─────────────────────────────────────────────────────────────
+  webapp-deps:
+    name: "[webapp] Snyk - Dependencies"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run Snyk dependency test
+      - run: npm install
+      - name: Snyk dependency test
         uses: snyk/actions/node@master
-        continue-on-error: true   # Don't fail the build, just report
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=low --json-file-output=snyk-dep-results.json
-
-      - name: Upload dependency scan results
-        uses: actions/upload-artifact@v4
+          args: --severity-threshold=low --json-file-output=snyk-webapp-dep.json
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: snyk-dependency-results
-          path: snyk-dep-results.json
+          name: snyk-webapp-dep
+          path: snyk-webapp-dep.json
 
-  snyk-code-scan:
-    name: Snyk - Static Code Analysis (SAST)
+  webapp-sast:
+    name: "[webapp] Snyk - SAST"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Run Snyk Code (SAST)
+      - name: Snyk Code test
         uses: snyk/actions/node@master
         continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           command: code test
-          args: --severity-threshold=low --json-file-output=snyk-code-results.json
-
-      - name: Upload SAST results
-        uses: actions/upload-artifact@v4
+          args: --severity-threshold=low --json-file-output=snyk-webapp-code.json
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: snyk-code-results
-          path: snyk-code-results.json
+          name: snyk-webapp-sast
+          path: snyk-webapp-code.json
 
-  snyk-monitor:
-    name: Snyk - Monitor (Track in Dashboard)
+  webapp-monitor:
+    name: "[webapp] Snyk - Monitor"
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Monitor project in Snyk dashboard
+      - run: npm install
+      - name: Monitor in Snyk dashboard
         uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           command: monitor
-          args: --project-name=dvwa-security-lab
+          args: --project-name=dvwa-webapp
+
+  # ── Vulnerable REST API ───────────────────────────────────────────────────────
+  api-deps:
+    name: "[api] Snyk - Dependencies"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+        working-directory: api
+      - name: Snyk dependency test
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=low --json-file-output=snyk-api-dep.json
+        # run from api subdir
+      - run: cd api && npx snyk test --severity-threshold=low --json > ../snyk-api-dep.json || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snyk-api-dep
+          path: snyk-api-dep.json
+
+  api-sast:
+    name: "[api] Snyk - SAST"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Snyk Code test (api/)
+        run: |
+          npm install -g snyk
+          snyk code test api/ --severity-threshold=low --json > snyk-api-code.json || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snyk-api-sast
+          path: snyk-api-code.json
+
+  api-monitor:
+    name: "[api] Snyk - Monitor"
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+        working-directory: api
+      - run: |
+          npm install -g snyk
+          cd api && snyk monitor --project-name=dvwa-vulnerable-api
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  # ── Vulnerable GraphQL API ────────────────────────────────────────────────────
+  graphql-deps:
+    name: "[graphql] Snyk - Dependencies"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+        working-directory: graphql
+      - run: |
+          npm install -g snyk
+          cd graphql && snyk test --severity-threshold=low --json > ../snyk-graphql-dep.json || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snyk-graphql-dep
+          path: snyk-graphql-dep.json
+
+  graphql-sast:
+    name: "[graphql] Snyk - SAST"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Snyk Code test (graphql/)
+        run: |
+          npm install -g snyk
+          snyk code test graphql/ --severity-threshold=low --json > snyk-graphql-code.json || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snyk-graphql-sast
+          path: snyk-graphql-code.json
+
+  graphql-monitor:
+    name: "[graphql] Snyk - Monitor"
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+        working-directory: graphql
+      - run: |
+          npm install -g snyk
+          cd graphql && snyk monitor --project-name=dvwa-vulnerable-graphql
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
