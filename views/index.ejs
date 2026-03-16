@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><title>DVWA Security Lab</title></head>
+<body>
+<h1>DVWA Security Lab</h1>
+<p><strong>FOR EDUCATIONAL/SECURITY TESTING PURPOSES ONLY</strong></p>
+<ul>
+  <li><a href="/user?id=1">SQL Injection - User Lookup</a></li>
+  <li><a href="/search?q=test">Reflected XSS - Search</a></li>
+  <li><a href="/notes/1">IDOR - View Notes</a></li>
+  <li><a href="/ping?host=localhost">Command Injection - Ping</a></li>
+  <li><a href="/config">Sensitive Data Exposure - Config</a></li>
+  <li><a href="/file?name=readme.txt">Path Traversal - File Read</a></li>
+  <li>
+    <form action="/login" method="POST">
+      Login: <input name="username" placeholder="admin">
+      <input name="password" type="password" placeholder="admin123">
+      <button type="submit">Login</button>
+    </form>
+  </li>
+</ul>
+</body>
+</html>

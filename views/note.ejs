@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head><title>Note</title></head>
+<body>
+<h1>Note (IDOR Vulnerable)</h1>
+<% if (note) { %>
+  <p>ID: <%= note.id %></p>
+  <p>Content: <%= note.content %></p>
+<% } else { %>
+  <p>Note not found.</p>
+<% } %>
+<a href="/">Back</a>
+</body>
+</html>

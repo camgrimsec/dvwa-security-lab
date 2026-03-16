@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head><title>User Lookup</title></head>
+<body>
+<h1>User Lookup (SQLi Vulnerable)</h1>
+<p>Query: <code><%= query %></code></p>
+<% rows.forEach(row => { %>
+  <p>ID: <%= row.id %> | Username: <%= row.username %> | Email: <%= row.email %></p>
+<% }) %>
+<a href="/">Back</a>
+</body>
+</html>
